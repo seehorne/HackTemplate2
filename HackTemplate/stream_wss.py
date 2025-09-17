@@ -392,73 +392,113 @@ class ConnectionManager:
             
             # Cancel remaining tasks
             for task in pending:
-                task.cancel()
+                if not task.cancelled():
+                    task.cancel()
+                    try:
+                        await task
+                    except asyncio.CancelledError:
+                        pass
+                    except Exception as e:
+                        log_message(f"Error during task cleanup: {e}", level="ERROR")
                 
+        except Exception as e:
+            log_message(f"Error in parallel processing handler: {e}", level="ERROR")
         finally:
-            # Cleanup
-            del self.audio_queues[websocket]
-            del self.image_queues[websocket]
+            # Cleanup queues safely
+            if websocket in self.audio_queues:
+                del self.audio_queues[websocket]
+            if websocket in self.image_queues:
+                del self.image_queues[websocket]
 
     async def message_router(self, websocket: WebSocket, audio_queue: Queue, image_queue: Queue):
         """Route incoming messages to appropriate queues"""
         try:
             while True:
-                received_payload_str = await websocket.receive_text()
-                client_request = json.loads(received_payload_str)
+                try:
+                    received_payload_str = await websocket.receive_text()
+                except WebSocketDisconnect:
+                    log_message("WebSocket disconnected in message_router", level="INFO")
+                    break
+                except Exception as e:
+                    log_message(f"Error receiving WebSocket message: {e}", level="ERROR")
+                    break
+                
+                try:
+                    client_request = json.loads(received_payload_str)
+                except json.JSONDecodeError as e:
+                    log_message(f"Invalid JSON received: {e}", level="ERROR")
+                    continue
                 
                 if 'type' in client_request and client_request['type'].startswith('audio_stream'):
                     await audio_queue.put(client_request)
                 else:
                     await image_queue.put(client_request)
                     
-        except WebSocketDisconnect:
+        except Exception as e:
+            log_message(f"Unexpected error in message_router: {e}", level="ERROR")
+        finally:
             # Signal other tasks to stop
             await audio_queue.put(None)
             await image_queue.put(None)
-            raise
 
     async def audio_processor_task(self, websocket: WebSocket, queue: Queue):
         """Dedicated task for processing audio messages"""
-        while True:
-            message = await queue.get()
-            if message is None:  # Shutdown signal
-                break
-                
-            try:
-                await self.handle_audio_stream(websocket, message)
-            except Exception as e:
-                log_message(f"Error in audio processor: {e}", level="ERROR")
+        try:
+            while True:
+                message = await queue.get()
+                if message is None:  # Shutdown signal
+                    break
+                    
+                try:
+                    await self.handle_audio_stream(websocket, message)
+                except WebSocketDisconnect:
+                    log_message("WebSocket disconnected during audio processing", level="INFO")
+                    break
+                except Exception as e:
+                    log_message(f"Error in audio processor: {e}", level="ERROR")
+        except Exception as e:
+            log_message(f"Fatal error in audio processor task: {e}", level="ERROR")
 
     async def image_processor_task(self, websocket: WebSocket, queue: Queue):
         """Dedicated task for processing image/processor messages"""
-        while True:
-            # Get frame data from queue
-            message = await queue.get()
-            
-            if message is None:  # Shutdown signal
-                break
-            try:
-                # Process the frame
-                image_b64 = message.get("image")
-                point_cloud = message.get("point_cloud")
-                processor_id = message.get("processor")
+        try:
+            while True:
+                # Get frame data from queue
+                message = await queue.get()
                 
-                # Store the last image frame for potential Gemini tool calls
-                if image_b64:
-                    self.gemini_manager.last_frame_by_websocket[websocket] = image_b64
-                
-                if processor_id is not None:
-                    response_data = await self.execute_request(
-                        processor_id, image_b64, point_cloud
-                    )
-                    await websocket.send_text(json.dumps(response_data))
-                
-            except Exception as e:
-                log_message(f"Error in image processor: {e}", level="ERROR")
-                # Send error response
-                await websocket.send_text(json.dumps({
-                    "error": f"Processing error: {str(e)}"
-                }))
+                if message is None:  # Shutdown signal
+                    break
+                try:
+                    # Process the frame
+                    image_b64 = message.get("image")
+                    point_cloud = message.get("point_cloud")
+                    processor_id = message.get("processor")
+                    
+                    # Store the last image frame for potential Gemini tool calls
+                    if image_b64:
+                        self.gemini_manager.last_frame_by_websocket[websocket] = image_b64
+                    
+                    if processor_id is not None:
+                        response_data = await self.execute_request(
+                            processor_id, image_b64, point_cloud
+                        )
+                        await websocket.send_text(json.dumps(response_data))
+                    
+                except WebSocketDisconnect:
+                    log_message("WebSocket disconnected during image processing", level="INFO")
+                    break
+                except Exception as e:
+                    log_message(f"Error in image processor: {e}", level="ERROR")
+                    # Send error response only if websocket is still connected
+                    try:
+                        await websocket.send_text(json.dumps({
+                            "error": f"Processing error: {str(e)}"
+                        }))
+                    except (WebSocketDisconnect, ConnectionResetError):
+                        log_message("Could not send error response - WebSocket disconnected", level="INFO")
+                        break
+        except Exception as e:
+            log_message(f"Fatal error in image processor task: {e}", level="ERROR")
 
     async def execute_request(self, target_processor_id: int, initial_image_b64: Optional[str], initial_point_cloud_json: Optional[Dict] = None) -> Dict:
         self.current_image_for_processing = initial_image_b64
