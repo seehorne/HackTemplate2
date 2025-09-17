@@ -1,0 +1,139 @@
+Initializing RealTimeCardProcessor (Parallel YOLO-Segmentation Version)...
+Using device: cpu
+Traceback (most recent call last):
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/urllib3/connection.py", line 198, in _new_conn
+    sock = connection.create_connection(
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/socket.py", line 967, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+socket.gaierror: [Errno -5] No address associated with hostname
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/urllib3/connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/urllib3/connection.py", line 753, in connect
+    self.sock = sock = self._new_conn()
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/urllib3/connection.py", line 205, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: <urllib3.connection.HTTPSConnection object at 0x7fd2bfb8f6d0>: Failed to resolve 'huggingface.co' ([Errno -5] No address associated with hostname)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/requests/adapters.py", line 644, in send
+    resp = conn.urlopen(
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/urllib3/connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/urllib3/util/retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='huggingface.co', port=443): Max retries exceeded with url: /microsoft/trocr-base-printed/resolve/main/config.json (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7fd2bfb8f6d0>: Failed to resolve 'huggingface.co' ([Errno -5] No address associated with hostname)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/huggingface_hub/file_download.py", line 1546, in _get_metadata_or_catch_error
+    metadata = get_hf_file_metadata(
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/huggingface_hub/utils/_validators.py", line 114, in _inner_fn
+    return fn(*args, **kwargs)
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/huggingface_hub/file_download.py", line 1463, in get_hf_file_metadata
+    r = _request_wrapper(
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/huggingface_hub/file_download.py", line 286, in _request_wrapper
+    response = _request_wrapper(
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/huggingface_hub/file_download.py", line 309, in _request_wrapper
+    response = http_backoff(method=method, url=url, **params, retry_on_exceptions=(), retry_on_status_codes=(429,))
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/huggingface_hub/utils/_http.py", line 310, in http_backoff
+    response = session.request(method=method, url=url, **kwargs)
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/huggingface_hub/utils/_http.py", line 96, in send
+    return super().send(request, *args, **kwargs)
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/requests/adapters.py", line 677, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: (MaxRetryError('HTTPSConnectionPool(host=\'huggingface.co\', port=443): Max retries exceeded with url: /microsoft/trocr-base-printed/resolve/main/config.json (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7fd2bfb8f6d0>: Failed to resolve \'huggingface.co\' ([Errno -5] No address associated with hostname)"))'), '(Request ID: 769d2700-da39-4904-9cab-545430269efe)')
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/transformers/utils/hub.py", line 424, in cached_files
+    hf_hub_download(
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/huggingface_hub/utils/_validators.py", line 114, in _inner_fn
+    return fn(*args, **kwargs)
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/huggingface_hub/file_download.py", line 1010, in hf_hub_download
+    return _hf_hub_download_to_cache_dir(
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/huggingface_hub/file_download.py", line 1117, in _hf_hub_download_to_cache_dir
+    _raise_on_head_call_error(head_call_error, force_download, local_files_only)
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/huggingface_hub/file_download.py", line 1661, in _raise_on_head_call_error
+    raise LocalEntryNotFoundError(
+huggingface_hub.errors.LocalEntryNotFoundError: An error happened while trying to locate the file on the Hub and we cannot find the requested files in the local cache. Please check your connection and try again or make sure your Internet connection is on.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/share/miniconda/envs/whatsai/bin/uvicorn", line 7, in <module>
+    sys.exit(main())
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/click/core.py", line 1442, in __call__
+    return self.main(*args, **kwargs)
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/click/core.py", line 1363, in main
+    rv = self.invoke(ctx)
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/click/core.py", line 1226, in invoke
+    return ctx.invoke(self.callback, **ctx.params)
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/click/core.py", line 794, in invoke
+    return callback(*args, **kwargs)
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/uvicorn/main.py", line 413, in main
+    run(
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/uvicorn/main.py", line 580, in run
+    server.run()
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/uvicorn/server.py", line 67, in run
+    return asyncio.run(self.serve(sockets=sockets))
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/asyncio/runners.py", line 44, in run
+    return loop.run_until_complete(main)
+  File "uvloop/loop.pyx", line 1518, in uvloop.loop.Loop.run_until_complete
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/uvicorn/server.py", line 71, in serve
+    await self._serve(sockets)
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/uvicorn/server.py", line 78, in _serve
+    config.load()
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/uvicorn/config.py", line 436, in load
+    self.loaded_app = import_from_string(self.app)
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/uvicorn/importer.py", line 19, in import_from_string
+    module = importlib.import_module(module_str)
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+  File "<frozen importlib._bootstrap>", line 1050, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1027, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1006, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 688, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 883, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/home/runner/work/HackTemplate2/HackTemplate2/HackTemplate/processors/card_processor.py", line 339, in <module>
+    processor = RealTimeCardProcessor('microsoft/trocr-base-printed', "./models/yolo11n-seg.pt")
+  File "/home/runner/work/HackTemplate2/HackTemplate2/HackTemplate/processors/card_processor.py", line 38, in __init__
+    self.ocr_model = VisionEncoderDecoderModel.from_pretrained(ocr_model_name).eval().to(self.device)
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/transformers/models/vision_encoder_decoder/modeling_vision_encoder_decoder.py", line 370, in from_pretrained
+    return super().from_pretrained(pretrained_model_name_or_path, *model_args, **kwargs)
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/transformers/modeling_utils.py", line 279, in _wrapper
+    return func(*args, **kwargs)
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/transformers/modeling_utils.py", line 4175, in from_pretrained
+    config, model_kwargs = cls.config_class.from_pretrained(
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/transformers/configuration_utils.py", line 550, in from_pretrained
+    config_dict, kwargs = cls.get_config_dict(pretrained_model_name_or_path, **kwargs)
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/transformers/configuration_utils.py", line 590, in get_config_dict
+    config_dict, kwargs = cls._get_config_dict(pretrained_model_name_or_path, **kwargs)
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/transformers/configuration_utils.py", line 649, in _get_config_dict
+    resolved_config_file = cached_file(
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/transformers/utils/hub.py", line 266, in cached_file
+    file = cached_files(path_or_repo_id=path_or_repo_id, filenames=[filename], **kwargs)
+  File "/usr/share/miniconda/envs/whatsai/lib/python3.10/site-packages/transformers/utils/hub.py", line 491, in cached_files
+    raise OSError(
+OSError: We couldn't connect to 'https://huggingface.co' to load the files, and couldn't find them in the cached files.
+Checkout your internet connection or see how to run the library in offline mode at 'https://huggingface.co/docs/transformers/installation#offline-mode'.
