@@ -46,6 +46,12 @@ The system includes several processors, ordered by complexity:
 - **Use Case**: Gesture recognition and finger counting
 - **Reference**: Adapted from Finger Counter using MediaPipe - https://github.com/HarshitDolu/Finger-Counter-using-mediapipe
 
+### Short Text Processor (ID: 12)
+- **Description**: Extracts and reads short text from images using Florence-2 OCR
+- **Dependencies**: None
+- **Use Case**: Quick text extraction from labels, signs, buttons, and other short text snippets
+- **Reference**: Similar to SeeingAI Short Text feature - Microsoft Florence-2 - https://huggingface.co/microsoft/Florence-2-large
+
 ## Setting Up Your Own Server
 
 ### Local Server Setup
