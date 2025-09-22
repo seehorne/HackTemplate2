@@ -1,11 +1,25 @@
 from .base_processor import BaseProcessor
-from transformers import AutoProcessor, AutoModelForCausalLM
 import numpy as np
 import cv2
 from typing import Dict, Union, Tuple, List, Optional
 from PIL import Image
-import torch
 import re
+
+# Try to import advanced OCR dependencies, fallback to basic implementation
+try:
+    from transformers import AutoProcessor, AutoModelForCausalLM
+    import torch
+    ADVANCED_OCR_AVAILABLE = True
+except ImportError:
+    ADVANCED_OCR_AVAILABLE = False
+    print("⚠️  Advanced OCR dependencies not available, using basic implementation")
+
+# Try to import Tesseract as fallback OCR
+try:
+    import pytesseract
+    TESSERACT_AVAILABLE = True
+except ImportError:
+    TESSERACT_AVAILABLE = False
 
 class ShortTextProcessor(BaseProcessor):
     def __init__(self,
@@ -25,25 +39,52 @@ class ShortTextProcessor(BaseProcessor):
         super().__init__()
         self.task_prompt = task_prompt
         self.max_text_length = max_text_length
-        self.device = 'cuda' if use_gpu and torch.cuda.is_available() else 'cpu'
+        self.ocr_method = "basic"  # Will be updated based on available dependencies
         
-        # Initialize Florence model for fast OCR
+        # Try to initialize advanced OCR first
+        if ADVANCED_OCR_AVAILABLE:
+            self._init_florence_ocr(model_id, use_gpu)
+        elif TESSERACT_AVAILABLE:
+            self._init_tesseract_ocr()
+        else:
+            self._init_basic_ocr()
+        
+        print(f"✅ ShortTextProcessor initialized using {self.ocr_method} OCR method")
+
+    def _init_florence_ocr(self, model_id, use_gpu):
+        """Initialize Florence-2 model for advanced OCR"""
         try:
+            self.device = 'cuda' if use_gpu and torch.cuda.is_available() else 'cpu'
             self.model = AutoModelForCausalLM.from_pretrained(
                 model_id, 
                 trust_remote_code=True,
                 torch_dtype='auto'
             ).eval().to(self.device)
             self.processor = AutoProcessor.from_pretrained(model_id, trust_remote_code=True)
-            self.model_loaded = True
+            self.ocr_method = "florence"
+            print(f"✅ Florence-2 OCR initialized on {self.device}")
         except Exception as e:
-            print(f"⚠️  Could not load model {model_id}: {e}")
-            print("    Running in offline mode - processor will return placeholder text")
-            self.model = None
-            self.processor = None
-            self.model_loaded = False
-        
-        print(f"✅ ShortTextProcessor initialized with {model_id} on {self.device}")
+            print(f"⚠️  Could not load Florence model {model_id}: {e}")
+            if TESSERACT_AVAILABLE:
+                self._init_tesseract_ocr()
+            else:
+                self._init_basic_ocr()
+
+    def _init_tesseract_ocr(self):
+        """Initialize Tesseract OCR as fallback"""
+        try:
+            # Test if tesseract is working
+            pytesseract.get_tesseract_version()
+            self.ocr_method = "tesseract"
+            print("✅ Tesseract OCR initialized")
+        except Exception as e:
+            print(f"⚠️  Tesseract not available: {e}")
+            self._init_basic_ocr()
+
+    def _init_basic_ocr(self):
+        """Initialize basic OCR using OpenCV-based text detection"""
+        self.ocr_method = "basic"
+        print("✅ Basic OCR initialized (pattern-based text detection)")
 
     def _preprocess_image_for_ocr(self, pil_image):
         """
@@ -76,17 +117,9 @@ class ShortTextProcessor(BaseProcessor):
         return Image.fromarray(denoised)
 
     def _run_florence_ocr(self, pil_image):
-        """
-        Run Florence OCR optimized for short text extraction
-        
-        Args:
-            pil_image (PIL.Image): Input image
-            
-        Returns:
-            str: Extracted text
-        """
-        if not self.model_loaded:
-            return "Short text processor (offline mode)"
+        """Run Florence OCR optimized for short text extraction"""
+        if self.ocr_method != "florence":
+            return ""
             
         try:
             # Preprocess image for better OCR
@@ -103,9 +136,9 @@ class ShortTextProcessor(BaseProcessor):
             generated_ids = self.model.generate(
                 input_ids=inputs["input_ids"],
                 pixel_values=inputs["pixel_values"],
-                max_new_tokens=min(512, self.max_text_length + 50),  # Limit tokens for speed
+                max_new_tokens=min(512, self.max_text_length + 50),
                 do_sample=False,
-                num_beams=1,  # Reduce beams for speed
+                num_beams=1,
                 early_stopping=True
             )
 
@@ -132,6 +165,88 @@ class ShortTextProcessor(BaseProcessor):
         except Exception as e:
             print(f"Error in Florence OCR: {e}")
             return ""
+
+    def _run_tesseract_ocr(self, pil_image):
+        """Run Tesseract OCR for text extraction"""
+        try:
+            # Preprocess image for better OCR
+            processed_image = self._preprocess_image_for_ocr(pil_image)
+            
+            # Configure Tesseract for short text
+            config = '--oem 3 --psm 8 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .,!?()-'
+            
+            # Extract text using Tesseract
+            text = pytesseract.image_to_string(processed_image, config=config)
+            return self._clean_short_text(text)
+            
+        except Exception as e:
+            print(f"Error in Tesseract OCR: {e}")
+            return ""
+
+    def _run_basic_ocr(self, cv_image):
+        """Run basic pattern-based text detection"""
+        try:
+            # Convert to grayscale
+            if len(cv_image.shape) == 3:
+                gray = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
+            else:
+                gray = cv_image
+            
+            # Apply text detection using basic computer vision
+            # This is a simple approach for demo purposes
+            text_regions = self._detect_text_regions(gray)
+            
+            if text_regions:
+                return f"Detected {len(text_regions)} text region(s) [Basic OCR Mode]"
+            else:
+                return "Short text processor ready [Basic OCR Mode]"
+                
+        except Exception as e:
+            print(f"Error in basic OCR: {e}")
+            return "Short text processor error"
+
+    def _detect_text_regions(self, gray_image):
+        """Basic text region detection using OpenCV"""
+        try:
+            # Apply morphological operations to detect text regions
+            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+            grad = cv2.morphologyEx(gray_image, cv2.MORPH_GRADIENT, kernel)
+            
+            # Apply threshold to get binary image
+            _, bw = cv2.threshold(grad, 0.0, 255.0, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+            
+            # Connect horizontally oriented regions
+            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (9, 1))
+            connected = cv2.morphologyEx(bw, cv2.MORPH_CLOSE, kernel)
+            
+            # Find contours
+            contours, _ = cv2.findContours(connected, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            
+            # Filter contours by area and aspect ratio to find text-like regions
+            text_regions = []
+            for contour in contours:
+                area = cv2.contourArea(contour)
+                if area > 100:  # Minimum area threshold
+                    rect = cv2.boundingRect(contour)
+                    w, h = rect[2], rect[3]
+                    aspect_ratio = w / h if h > 0 else 0
+                    if 2 < aspect_ratio < 10:  # Text-like aspect ratio
+                        text_regions.append(rect)
+            
+            return text_regions
+            
+        except Exception as e:
+            print(f"Error in text region detection: {e}")
+            return []
+
+    def _run_ocr(self, pil_image, cv_image):
+        """Run OCR using the best available method"""
+        if self.ocr_method == "florence":
+            return self._run_florence_ocr(pil_image)
+        elif self.ocr_method == "tesseract":
+            return self._run_tesseract_ocr(pil_image)
+        else:
+            return self._run_basic_ocr(cv_image)
 
     def _clean_short_text(self, text):
         """
@@ -173,7 +288,7 @@ class ShortTextProcessor(BaseProcessor):
         # Create output frame as copy of input
         output = frame.copy()
         
-        # Convert OpenCV frame to PIL Image
+        # Convert OpenCV frame to PIL Image for advanced OCR methods
         if len(frame.shape) == 2:
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
         elif frame.shape[2] == 4:
@@ -182,8 +297,8 @@ class ShortTextProcessor(BaseProcessor):
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         pil_image = Image.fromarray(frame_rgb)
         
-        # Extract text using Florence OCR
-        extracted_text = self._run_florence_ocr(pil_image)
+        # Extract text using the best available OCR method
+        extracted_text = self._run_ocr(pil_image, frame)
         
         # Add text overlay to output frame
         if extracted_text:
@@ -216,6 +331,18 @@ class ShortTextProcessor(BaseProcessor):
                         cv2.LINE_AA
                     )
                     y_position += 25
+            
+            # Add OCR method indicator
+            cv2.putText(
+                output,
+                f"OCR: {self.ocr_method}",
+                (15, h - 5),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.4,
+                (150, 150, 150),
+                1,
+                cv2.LINE_AA
+            )
         
         return output, extracted_text
 
